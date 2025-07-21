@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>PunchIn 出勤報告モックアップ</title>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; padding: 2rem; }
+    #container { width: 300px; border: 1px solid #ccc; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label { display: block; margin-bottom: 0.5rem; }
+    input { width: 100%; padding: 0.5rem; margin-bottom: 1rem; box-sizing: border-box; }
+    button { width: 100%; padding: 0.7rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #aaa; cursor: default; }
+    #loadingSpinner { text-align: center; margin: 1rem 0; display: none; }
+    #messageArea { margin-top: 1rem; color: #d9534f; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2>PunchIn 出勤報告</h2>
+    <label for="staffIdInput">社員番号</label>
+    <input type="text" id="staffIdInput" placeholder="AN0000">
+    <button id="clockInBtn">出勤する</button>
+    <div id="loadingSpinner">読み込み中…</div>
+    <div id="messageArea"></div>
+  </div>
+  <script>
+    document.getElementById('clockInBtn').addEventListener('click', function() {
+      const btn = document.getElementById('clockInBtn');
+      const input = document.getElementById('staffIdInput');
+      const spinner = document.getElementById('loadingSpinner');
+      const msgArea = document.getElementById('messageArea');
+
+      const staffId = input.value.trim();
+      if (!staffId) {
+        msgArea.textContent = '社員番号を入力してください';
+        return;
+      }
+
+      btn.disabled = true;
+      spinner.style.display = 'block';
+      msgArea.textContent = '';
+
+      const today = new Date();
+      const year  = today.getFullYear();
+      const month = today.getMonth() + 1;
+
+      // PMO-API の URL をここに設定
+      const apiUrl =
+        'https://script.google.com/macros/s/AKfycbzQQjC4cmVX-psHlR18BgJqRwa_DJBnGY_0vHOee4AuKADVP0FWI4jXNzPdJYpQ6zsoYQ/exec' +
+        `?path=shifts` +
+        `&year=${year}` +
+        `&month=${month}` +
+        `&staffId=${encodeURIComponent(staffId)}` +
+        `&token=my-secret-token`;
+
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            msgArea.textContent = 'エラー: ' + data.error;
+          } else {
+            const me = data.find(item => item.staffId === staffId);
+            msgArea.textContent = me
+              ? `店舗：${me.store}　応援：${me.note}`
+              : '本日のシフトが見つかりません';
+          }
+        })
+        .catch(() => {
+          msgArea.textContent = '通信エラーです';
+        })
+        .finally(() => {
+          btn.disabled = false;
+          spinner.style.display = 'none';
+        });
+    });
+  </script>
+</body>
+</html>
