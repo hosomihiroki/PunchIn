@@ -11,7 +11,7 @@
     button { width: 100%; padding: 0.7rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
     button:disabled { background: #aaa; cursor: default; }
     #loadingSpinner { text-align: center; margin: 1rem 0; display: none; }
-    #messageArea { margin-top: 1rem; color: #d9534f; }
+    #messageArea { margin-top: 1rem; color: #333; }
   </style>
 </head>
 <body>
@@ -23,7 +23,22 @@
     <div id="loadingSpinner">読み込み中…</div>
     <div id="messageArea"></div>
   </div>
+
   <script>
+    // ランダム応援メッセージの候補配列
+    const MESSAGES = [
+      "いってらっしゃい！",
+      "今日もファイトだよ！",
+      "行ってらっしゃいませ😊",
+      "がんばってね！",
+      "最高の一日にしよう！"
+    ];
+    // 文字列からランダムなメッセージを返す関数
+    function getRandomMessage() {
+      const i = Math.floor(Math.random() * MESSAGES.length);
+      return MESSAGES[i];
+    }
+
     document.getElementById('clockInBtn').addEventListener('click', function() {
       const btn = document.getElementById('clockInBtn');
       const input = document.getElementById('staffIdInput');
@@ -44,7 +59,6 @@
       const year  = today.getFullYear();
       const month = today.getMonth() + 1;
 
-      // PMO-API の URL をここに設定
       const apiUrl =
         'https://script.google.com/macros/s/AKfycbzQQjC4cmVX-psHlR18BgJqRwa_DJBnGY_0vHOee4AuKADVP0FWI4jXNzPdJYpQ6zsoYQ/exec' +
         `?path=shifts` +
@@ -59,10 +73,15 @@
           if (data.error) {
             msgArea.textContent = 'エラー: ' + data.error;
           } else {
+            // シフト情報から自分のデータを探す
             const me = data.find(item => item.staffId === staffId);
-            msgArea.textContent = me
-              ? `店舗：${me.store}　応援：${me.note}`
-              : '本日のシフトが見つかりません';
+            if (me) {
+              // 取得した店舗名とランダム応援メッセージを表示
+              const message = getRandomMessage();
+              msgArea.textContent = `店舗：${me.store}　応援：${message}`;
+            } else {
+              msgArea.textContent = '本日のシフトが見つかりません';
+            }
           }
         })
         .catch(() => {
