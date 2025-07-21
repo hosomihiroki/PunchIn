@@ -58,12 +58,14 @@
       const today = new Date();
       const year  = today.getFullYear();
       const month = today.getMonth() + 1;
+      const day   = today.getDate();
 
       const apiUrl =
-        'https://script.google.com/macros/s/AKfycbzQQjC4cmVX-psHlR18BgJqRwa_DJBnGY_0vHOee4AuKADVP0FWI4jXNzPdJYpQ6zsoYQ/exec' +
+        'https://script.google.com/macros/s/AKfycbwG7_hi2_AHWmUk1R6ZfrcfFUAjcrtOX-tL4aXREd4Andp_Db8JQfK-LowJ6umVXfQccA/exec' +
         `?path=shifts` +
         `&year=${year}` +
         `&month=${month}` +
+        `&day=${day}` +
         `&staffId=${encodeURIComponent(staffId)}` +
         `&token=my-secret-token`;
 
