@@ -15,6 +15,7 @@
   </style>
 </head>
 <body>
+
   <div id="container">
     <h2>PunchIn 出勤報告</h2>
     <label for="staffIdInput">社員番号</label>
@@ -25,7 +26,7 @@
   </div>
 
   <script>
-    // ランダム応援メッセージの候補配列
+    // ランダム応援メッセージ
     const MESSAGES = [
       "いってらっしゃい！",
       "今日もファイトだよ！",
@@ -33,13 +34,11 @@
       "がんばってね！",
       "最高の一日にしよう！"
     ];
-    // 文字列からランダムなメッセージを返す関数
     function getRandomMessage() {
-      const i = Math.floor(Math.random() * MESSAGES.length);
-      return MESSAGES[i];
+      return MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
     }
 
-    document.getElementById('clockInBtn').addEventListener('click', function() {
+    document.getElementById('clockInBtn').addEventListener('click', () => {
       const btn = document.getElementById('clockInBtn');
       const input = document.getElementById('staffIdInput');
       const spinner = document.getElementById('loadingSpinner');
@@ -55,11 +54,13 @@
       spinner.style.display = 'block';
       msgArea.textContent = '';
 
+      // 今日の年・月・日を取得
       const today = new Date();
       const year  = today.getFullYear();
       const month = today.getMonth() + 1;
       const day   = today.getDate();
 
+      // ここだけ書き換えればOK：あなたのGASウェブアプリURL & token
       const apiUrl =
         'https://script.google.com/macros/s/AKfycbwG7_hi2_AHWmUk1R6ZfrcfFUAjcrtOX-tL4aXREd4Andp_Db8JQfK-LowJ6umVXfQccA/exec' +
         `?path=shifts` +
@@ -70,17 +71,14 @@
         `&token=my-secret-token`;
 
       fetch(apiUrl)
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
           if (data.error) {
             msgArea.textContent = 'エラー: ' + data.error;
           } else {
-            // シフト情報から自分のデータを探す
             const me = data.find(item => item.staffId === staffId);
             if (me) {
-              // 取得した店舗名とランダム応援メッセージを表示
-              const message = getRandomMessage();
-              msgArea.textContent = `店舗：${me.store}　応援：${message}`;
+              msgArea.textContent = `店舗：${me.store}　応援：${getRandomMessage()}`;
             } else {
               msgArea.textContent = '本日のシフトが見つかりません';
             }
@@ -95,5 +93,6 @@
         });
     });
   </script>
+
 </body>
 </html>
