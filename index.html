@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>PunchIn 出勤報告0</title>
+  <title>PunchIn 出勤報告</title>
   <style>
     body { font-family: sans-serif; display: flex; justify-content: center; padding: 2rem; background: #f5f5f5; }
     #container { width: 320px; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -17,7 +17,7 @@
 </head>
 <body>
   <div id="container">
-    <h2>PunchIn 出勤報告</h2>
+    <h2>PunchIn 出勤報告0</h2>
     <label for="staffIdInput">社員番号</label>
     <!-- 検索履歴用 datalist を追加 -->
     <input list="historyList" type="text" id="staffIdInput" placeholder="AN0000">
@@ -96,7 +96,7 @@
 
       // API呼び出しURL：自分のGAS URLとトークンに置き換え
       const apiUrl =
-        'https://script.google.com/macros/s/AKfycbzCejPav3a8SrBSQvQSNRm3XOmnsm-cDA-ZQtserkMsCjMuEQ-ci8t6V0AeebFHpj8ebA/exec' +
+        'https://script.google.com/macros/s/AKfycbx55F3PosWC6lWa6L0UVabL1SKhz4B_Kp6PArpuzzdQ50-xQKo2d6Jo2sbHX9yjfmCXXw/exec' +
         `?path=shifts` +
         `&year=${year}` +
         `&month=${month}` +
