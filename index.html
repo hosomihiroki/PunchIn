@@ -38,66 +38,16 @@
       font-size: 1.5rem;
       color: var(--primary);
     }
-    label {
-      display: block;
-      text-align: left;
-      font-size: 0.9rem;
-      margin-bottom: 0.5rem;
-      color: var(--text);
-    }
-    input {
-      width: 100%;
-      padding: 0.6rem;
-      margin-bottom: 1rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 1rem;
-      transition: border-color var(--transition);
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
-    }
-    button#clockInBtn {
-      width: 100%;
-      padding: 0.8rem;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition), transform var(--transition);
-    }
-    button#clockInBtn:hover:not(:disabled) {
-      background: #0056b3;
-    }
-    button#clockInBtn:active:not(:disabled) {
-      transform: scale(0.98);
-    }
-    button#clockInBtn:disabled {
-      background: #aaa;
-      cursor: default;
-    }
-    /* CSS スピナー */
-    #loadingSpinner {
-      width: 24px;
-      height: 24px;
-      margin: 1rem auto;
-      border: 3px solid var(--border);
-      border-top: 3px solid var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      display: none;
-    }
+    label { display: block; text-align: left; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    input { width: 100%; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1rem; transition: border-color var(--transition); }
+    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2); }
+    button { width: 100%; padding: 0.8rem; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-size: 1rem; cursor: pointer; transition: background var(--transition), transform var(--transition); }
+    button:hover:not(:disabled) { background: #0056b3; }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { background: #aaa; cursor: default; }
+    #loadingSpinner { width: 24px; height: 24px; margin: 1rem auto; border: 3px solid var(--border); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #messageArea {
-      margin-top: 1rem;
-      color: var(--text);
-      font-size: 0.95rem;
-      min-height: 1.2em;
-    }
+    #messageArea { margin-top: 1rem; color: var(--text); font-size: 0.95rem; min-height: 1.2em; }
   </style>
 </head>
 <body>
@@ -106,7 +56,7 @@
     <label for="staffIdInput">社員番号</label>
     <input list="historyList" type="text" id="staffIdInput" placeholder="AN0000">
     <datalist id="historyList"></datalist>
-    <button id="clockInBtn">出勤する</button>
+    <button id="confirmBtn">確認</button>
     <div id="loadingSpinner"></div>
     <div id="messageArea"></div>
   </div>
@@ -124,51 +74,56 @@
       return MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
     }
     function loadHistory() {
-      const list = document.getElementById('historyList');
-      list.innerHTML = '';
+      const list = document.getElementById('historyList'); list.innerHTML = '';
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      history.forEach(id => {
-        const opt = document.createElement('option'); opt.value = id;
-        list.appendChild(opt);
-      });
+      history.forEach(id => { const opt = document.createElement('option'); opt.value = id; list.appendChild(opt); });
     }
     function saveHistory(id) {
       let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      if (!history.includes(id)) {
-        history.unshift(id);
-        if (history.length > 10) history.pop();
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-      }
+      if (!history.includes(id)) { history.unshift(id); if (history.length > 10) history.pop(); localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }
     }
-    document.addEventListener('DOMContentLoaded', loadHistory);
-    document.getElementById('clockInBtn').addEventListener('click', () => {
-      const btn = document.getElementById('clockInBtn');
+    loadHistory();
+
+    document.getElementById('confirmBtn').addEventListener('click', async () => {
       const input = document.getElementById('staffIdInput');
-      const spinner = document.getElementById('loadingSpinner');
       const msgArea = document.getElementById('messageArea');
       const staffId = input.value.trim();
-      if (!staffId) { msgArea.textContent = '社員番号を入力してください'; return; }
+      if (!staffId) {
+        msgArea.textContent = '社員番号を入力してください'; return;
+      }
+      // ユーザー名確認
+      try {
+        const res = await fetch(
+          'https://script.google.com/macros/s/AKfycbzCejPav3a8SrBSQvQSNRm3XOmnsm-cDA-ZQtserkMsCjMuEQ-ci8t6V0AeebFHpj8ebA/exec' +
+          `?path=user&staffId=${encodeURIComponent(staffId)}&token=my-secret-token`
+        );
+        const user = await res.json();
+        if (user.error) { msgArea.textContent = 'ユーザーが見つかりません'; return; }
+        // 確認ダイアログ
+        const ok = confirm(`社員番号: ${staffId}\n名前: ${user.name}\n\nよろしければOK、修正ならキャンセル`);
+        if (!ok) { location.reload(); return; }
+      } catch {
+        msgArea.textContent = '通信エラーです'; return;
+      }
+      // 確認後：出勤処理
       saveHistory(staffId); loadHistory();
+      const btn = document.getElementById('confirmBtn'); const spinner = document.getElementById('loadingSpinner');
       btn.disabled = true; spinner.style.display = 'block'; msgArea.textContent = '';
-      const today = new Date();
-      const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
-      const apiUrl =
+      const today = new Date(); const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
+      // シフト取得
+      const shiftRes = await fetch(
         'https://script.google.com/macros/s/AKfycbzCejPav3a8SrBSQvQSNRm3XOmnsm-cDA-ZQtserkMsCjMuEQ-ci8t6V0AeebFHpj8ebA/exec' +
-        `?path=shifts&year=${y}&month=${m}&day=${d}` +
-        `&staffId=${encodeURIComponent(staffId)}&token=my-secret-token`;
-      fetch(apiUrl)
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) msgArea.textContent = 'エラー: ' + data.error;
-          else {
-            const me = data.find(item => item.staffId === staffId);
-            msgArea.textContent = me
-              ? `店舗：${me.store}　応援：${getRandomMessage()}`
-              : '本日のシフトが見つかりません';
-          }
-        })
-        .catch(() => { msgArea.textContent = '通信エラーです'; })
-        .finally(() => { btn.disabled = false; spinner.style.display = 'none'; });
+        `?path=shifts&year=${y}&month=${m}&day=${d}&staffId=${encodeURIComponent(staffId)}&token=my-secret-token`
+      );
+      const shifts = await shiftRes.json();
+      const me = shifts.find(item => item.staffId === staffId);
+      if (me) {
+        alert(`${user.name}さん、おはようございます\n店舗：${me.store}\n応援：${getRandomMessage()}`);
+      } else {
+        alert('本日のシフトが見つかりません');
+      }
+      // TODO: ここで clockIn API 呼び出しなど
+      btn.disabled = false; spinner.style.display = 'none';
     });
   </script>
 </body>
