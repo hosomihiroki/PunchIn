@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>出勤報告</title>
+  <style>
+  :root { --primary: #007bff; --bg: #f0f2f5; --card-bg: #fff; --text: #333; --border: #ddd; --radius: 8px; --transition: 0.2s; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; font-family:'Segoe UI',sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; height:100vh; }
+  #container { width:320px; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+  h2 { margin:0 0 1.2rem; color:var(--primary); text-align:center; font-size: 1.25rem;}
+  label { display:block; margin-bottom:0.3rem; text-align:center; font-size: 0.95rem; }
+  input { width:100%; padding:0.6rem; margin-bottom:0.5rem; border:1px solid var(--border); border-radius:var(--radius); font-size:0.95rem; transition:border-color var(--transition); text-align:center;}
+  input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 2px rgba(0,123,255,0.2); }
+  button { width:100%; padding:0.8rem; color:#fff; border:none; border-radius:var(--radius); cursor:pointer; transition:background var(--transition),transform var(--transition); margin-top:0.5rem; font-size:0.98rem;}
+  #confirmBtn { background:var(--primary);}
+  #confirmBtn:hover:not(:disabled) { background:#0056b3; }
+  #clockInBtn { background:var(--primary); display:none;}
+  #clockInBtn:hover { background:#0056b3;}
+  #reloadBtn { background:#6c757d; display:none;}
+  #reloadBtn:hover { background:#5a6268;}
+  button:active:not(:disabled) { transform:scale(0.98);}
+  button:disabled { background:#aaa; cursor:default;}
+  #loadingArea { display:none; justify-content:center; align-items:center; margin:0.5rem 0; gap:0.5rem;}
+  #loadingSpinner { width:24px; height:24px; border:3px solid var(--border); border-top:3px solid var(--primary); border-radius:50%; animation:spin 1s linear infinite;}
+  #loadingText { color:var(--text); font-size:0.96rem;}
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #infoArea { text-align:center; margin-top:1rem; font-size: 1rem; color:var(--text); min-height: 3em;}
+  #infoArea p { margin: 0.25em 0; font-size:0.97rem;}
+</style>
+</head>
+<body>
+  <div id="container">
+    <h2>出勤報告</h2>
+    <label for="staffIdInput">社員番号</label>
+    <input list="historyList" type="text" id="staffIdInput" placeholder="AN0000" maxlength="6">
+    <datalist id="historyList"></datalist>
+
+    <!-- 読み込み中エリア -->
+    <div id="loadingArea">
+      <div id="loadingSpinner"></div>
+      <span id="loadingText">読み込み中…</span>
+    </div>
+
+    <!-- フォーム下に表示する情報エリア -->
+    <div id="infoArea">
+      <p id="userName"></p>
+      <p id="workDate"></p>
+      <p id="storeName"></p>
+    </div>
+
+    <!-- 各種ボタン -->
+    <button id="confirmBtn">確認</button>
+    <button id="clockInBtn">出勤する</button>
+    <button id="reloadBtn">再読込み</button>
+  </div>
+
+  <script>
+    const HISTORY_KEY = 'punchin_staff_history';
+    const MESSAGES = ['いってらっしゃい！','今日もファイトだよ！','行ってらっしゃいませ😊','がんばってね！','最高の一日にしよう！'];
+    function getRandom() { return MESSAGES[Math.floor(Math.random() * MESSAGES.length)]; }
+    function loadHistory() {
+      const dl = document.getElementById('historyList'); dl.innerHTML = '';
+      JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]').forEach(a => { const o = document.createElement('option'); o.value = a; dl.appendChild(o); });
+    }
+    function saveHistory(a) {
+      let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      if (!h.includes(a)) { h.unshift(a); if (h.length > 10) h.pop(); localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+    }
+    loadHistory();
+
+    let u = null, s = null, todayStr = '', checkedIn = false;
+    async function fetchInfo() {
+      if (checkedIn) return; // 出勤済みなら何もしない
+      const id = document.getElementById('staffIdInput').value.trim(); if (!id) return;
+      document.getElementById('infoArea').querySelectorAll('p').forEach(p => p.textContent = '');
+      document.getElementById('clockInBtn').style.display = 'none';
+      document.getElementById('reloadBtn').style.display = 'none';
+      document.getElementById('confirmBtn').style.display = 'block';
+
+      document.getElementById('loadingArea').style.display = 'flex';
+      document.getElementById('confirmBtn').disabled = true;
+
+      try {
+        const resU = await fetch(`https://punchin-proxy.hosomi-biz.workers.dev?path=user&staffId=${encodeURIComponent(id)}&token=my-secret-token`);
+        u = await resU.json(); if (u.error) throw new Error('ユーザーが見つかりません');
+        const d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1, dd = d.getDate();
+        todayStr = `${y}-${('0'+m).slice(-2)}-${('0'+dd).slice(-2)}`;
+        const resS = await fetch(`https://punchin-proxy.hosomi-biz.workers.dev?path=shifts&year=${y}&month=${m}&day=${dd}&staffId=${encodeURIComponent(id)}&token=my-secret-token`);
+        const arr = await resS.json(); s = arr.find(x => x.staffId === id);
+
+        saveHistory(id); loadHistory();
+        document.getElementById('userName').textContent = `名前: ${u.name}`;
+        document.getElementById('workDate').textContent = `日付: ${todayStr}`;
+        if (s) {
+          document.getElementById('storeName').textContent = `店舗: ${s.store}`;
+          document.getElementById('confirmBtn').style.display = 'none';
+          document.getElementById('clockInBtn').style.display = 'block';
+        } else {
+          document.getElementById('storeName').textContent = '本日のシフトはありません';
+          document.getElementById('confirmBtn').style.display = 'none';
+          document.getElementById('reloadBtn').style.display = 'block';
+        }
+      } catch (e) {
+        document.getElementById('storeName').textContent = e.message;
+        document.getElementById('confirmBtn').style.display = 'none';
+        document.getElementById('reloadBtn').style.display = 'block';
+      } finally {
+        document.getElementById('loadingArea').style.display = 'none';
+        document.getElementById('confirmBtn').disabled = false;
+      }
+    }
+
+    const inp = document.getElementById('staffIdInput');
+    inp.addEventListener('input', () => { if (inp.value.trim().length === 6) inp.blur(); });
+    inp.addEventListener('blur', fetchInfo);
+    document.getElementById('confirmBtn').addEventListener('click', fetchInfo);
+    document.getElementById('clockInBtn').addEventListener('click', () => {
+      if (!u || !s) return;
+      checkedIn = true;
+      inp.disabled = true;
+      document.getElementById('confirmBtn').disabled = true;
+      document.getElementById('clockInBtn').style.display = 'none';
+      document.getElementById('reloadBtn').style.display = 'block';
+      const now = new Date();
+      const formatted = `${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)} ${('0'+now.getHours()).slice(-2)}:${('0'+now.getMinutes()).slice(-2)}`;
+      document.getElementById('infoArea').innerHTML = `
+        <p style="text-align:center; font-size:1rem;">〇〇さん<br>おはようございます</p>
+        <p style="text-align:center; font-size:1rem;">出勤日時:<br>${formatted}</p>
+        <p style="text-align:center; font-size:1rem;">店舗:<br>${s.store}</p>
+        <p style="margin-top:1em; color:#007bff; text-align:center; font-size:1rem;">${getRandom()}</p>
+      `.replace('〇〇', u.name);
+    });
+    document.getElementById('reloadBtn').addEventListener('click', () => location.reload());
+  </script>
+</body>
+</html>
